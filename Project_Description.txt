@@ -1,0 +1,290 @@
+================================================================================
+TRUST-AWARE FEDERATED LEARNING-BASED INTRUSION DETECTION SYSTEM FOR IoT NETWORKS
+================================================================================
+
+1. PROJECT OVERVIEW
+-------------------
+
+The Trust-Aware Federated Learning-Based Intrusion Detection System (TrustAwareFL-IDS) is a cybersecurity project that aims to detect malicious network activities in Internet of Things (IoT) environments while preserving user privacy.
+
+Traditional Intrusion Detection Systems (IDS) require all network traffic from IoT devices to be collected and processed on a centralized server. This approach creates privacy concerns, increases communication overhead, and introduces a single point of failure.
+
+Our project addresses these issues by implementing Federated Learning (FL), where multiple IoT devices train machine learning models locally using their own network traffic data. Instead of sharing raw data, only model information is considered during the aggregation process.
+
+To further improve security, the project introduces a Trust Evaluation Module that continuously evaluates the reliability of each participating client. Clients with low trust scores receive lower influence during aggregation or are completely excluded from the Federated Learning process.
+
+The result is a decentralized, privacy-preserving, and trust-aware intrusion detection system that is more resilient against compromised IoT devices.
+
+================================================================================
+
+2. PROBLEM STATEMENT
+--------------------
+
+Although Federated Learning preserves privacy by avoiding centralized data collection, it assumes that every participating client is honest.
+
+In real-world IoT environments, devices may become compromised through attacks such as the Mirai Botnet. Malicious devices can intentionally poison model updates, reducing the accuracy of the global intrusion detection model.
+
+Therefore, there is a need for a Trust-Aware Federated Learning framework that can identify unreliable clients and minimize their impact on the collaborative learning process.
+
+================================================================================
+
+3. CURRENT IMPLEMENTATION
+-------------------------
+
+The current implementation is a complete backend simulation of a Trust-Aware Federated Learning system.
+
+The project currently performs the following operations:
+
+• Loads the UNSW-NB15 intrusion detection dataset.
+• Preprocesses the dataset by encoding categorical features and splitting data.
+• Divides the dataset among four virtual IoT clients.
+• Each client independently trains a Random Forest intrusion detection model using only its local data.
+• Simulates a Mirai Botnet attack by poisoning the training labels of one client.
+• Evaluates every client using a Trust Evaluation Module.
+• Calculates trust scores using multiple trust factors.
+• Assigns aggregation weights based on trust.
+• Excludes clients whose trust falls below a predefined threshold.
+• Combines trusted client predictions using trust-weighted aggregation.
+• Generates a global intrusion detection result.
+• Logs simulation results for visualization and analysis.
+
+================================================================================
+
+4. PROJECT WORKFLOW
+-------------------
+
+UNSW-NB15 Dataset
+
+↓
+
+Data Preprocessing
+
+↓
+
+Dataset Split Among Four Clients
+
+↓
+
+Local Random Forest Training
+
+↓
+
+Mirai Botnet Simulation
+
+↓
+
+Trust Score Calculation
+
+↓
+
+Trust-Aware Aggregation
+
+↓
+
+Global Intrusion Detection
+
+↓
+
+Result Logging
+
+================================================================================
+
+5. DATASET
+----------
+
+Dataset Used:
+UNSW-NB15
+
+Purpose:
+The dataset contains both normal and malicious network traffic records representing various cyberattacks commonly observed in modern computer networks.
+
+The dataset is used to train and evaluate the intrusion detection models running on each Federated Learning client.
+
+================================================================================
+
+6. FEDERATED LEARNING IMPLEMENTATION
+------------------------------------
+
+The system simulates a Federated Learning environment consisting of:
+
+• Four virtual IoT clients
+• One central aggregation server
+• Five Federated Learning communication rounds
+
+Each client:
+
+• Receives only its own local dataset.
+• Trains an independent Random Forest model.
+• Never shares raw network traffic.
+• Sends only prediction results for aggregation.
+
+This demonstrates the privacy-preserving nature of Federated Learning.
+
+================================================================================
+
+7. MIRAI BOTNET SIMULATION
+--------------------------
+
+The project simulates a malicious IoT device infected with the Mirai Botnet.
+
+Client 3 is designated as the malicious client.
+
+During training:
+
+• Training labels are intentionally poisoned.
+• Local model quality degrades.
+• Trust score gradually decreases.
+• Aggregation weight becomes smaller.
+• The client is eventually excluded if its trust falls below the threshold.
+
+This demonstrates how compromised IoT devices can affect Federated Learning and how trust-aware aggregation mitigates their influence.
+
+================================================================================
+
+8. TRUST EVALUATION MODULE
+--------------------------
+
+The Trust Evaluation Module is the primary contribution of this project.
+
+Instead of trusting every client equally, the server evaluates each client using multiple trust factors.
+
+Trust Score Parameters:
+
+• Local Model Accuracy (50%)
+• Prediction Consistency (20%)
+• Participation History (20%)
+• Reliability History (10%)
+
+The final trust score determines the influence of each client during aggregation.
+
+Higher trust results in larger aggregation weights.
+
+Clients with very low trust scores are excluded from the Federated Learning process.
+
+================================================================================
+
+9. TRUST-AWARE AGGREGATION
+--------------------------
+
+Unlike conventional Federated Learning where every client contributes equally, this project performs trust-weighted aggregation.
+
+Example:
+
+Traditional Federated Learning
+
+Client 1 -> 25%
+Client 2 -> 25%
+Client 3 -> 25%
+Client 4 -> 25%
+
+Trust-Aware Federated Learning
+
+Client 1 -> 33%
+Client 2 -> 31%
+Client 3 -> 5%
+Client 4 -> 31%
+
+This significantly reduces the influence of malicious clients while improving the robustness of the global intrusion detection model.
+
+================================================================================
+
+10. CURRENT PROJECT FEATURES
+----------------------------
+
+✓ Data preprocessing
+
+✓ Random Forest intrusion detection model
+
+✓ Federated Learning simulation
+
+✓ Four virtual IoT clients
+
+✓ Trust Evaluation Module
+
+✓ Dynamic trust calculation
+
+✓ Mirai Botnet attack simulation
+
+✓ Trust-weighted aggregation
+
+✓ Automatic malicious client exclusion
+
+✓ Simulation logging
+
+================================================================================
+
+11. CURRENT LIMITATIONS
+-----------------------
+
+The current project is a software simulation and does not yet represent a complete real-world deployment.
+
+Current limitations include:
+
+• IoT clients are simulated on a single computer.
+• Communication between clients and server is simulated locally.
+• Random Forest models are aggregated using trust-weighted ensemble voting instead of true Federated Averaging.
+• Trust metrics are simplified for demonstration purposes.
+
+These limitations were intentionally chosen to create a practical and demonstrable final-year project while accurately illustrating Trust-Aware Federated Learning concepts.
+
+================================================================================
+
+12. FUTURE IMPLEMENTATIONS
+--------------------------
+
+The next phase of development focuses on transforming the backend simulation into a complete interactive application.
+
+Planned features include:
+
+• Flask REST API for backend communication.
+
+• React.js dashboard for monitoring the entire Federated Learning system.
+
+• Real-time visualization of:
+  - Client trust scores
+  - Global model accuracy
+  - Aggregation weights
+  - Client participation
+  - Attack detection results
+
+• Interactive network topology showing:
+  - IoT devices
+  - Federated server
+  - Communication links
+  - Trust-based node coloring
+  - Automatic isolation of malicious clients
+
+• Support for multiple attack simulations:
+  - Data Poisoning
+  - Model Poisoning
+  - Byzantine Attacks
+  - Sybil Attacks
+  - Denial-of-Service attacks
+
+• Real-time simulation controls allowing users to start, stop, and monitor Federated Learning rounds.
+
+• Integration with advanced Federated Learning frameworks such as Flower or TensorFlow Federated.
+
+================================================================================
+
+13. PROJECT OBJECTIVE
+---------------------
+
+The primary objective of this project is to design and implement a privacy-preserving, Trust-Aware Federated Learning framework capable of detecting cyberattacks in IoT networks while reducing the influence of compromised devices.
+
+The project demonstrates how trust-aware aggregation can improve the security, robustness, and reliability of Federated Learning-based Intrusion Detection Systems.
+
+================================================================================
+
+14. CONCLUSION
+--------------
+
+The current implementation successfully demonstrates the core concepts of Trust-Aware Federated Learning for IoT intrusion detection.
+
+The backend includes data preprocessing, local model training, malicious client simulation, trust evaluation, trust-aware aggregation, and result logging.
+
+Future development will focus on building an interactive web dashboard, real-time visualizations, API integration, and support for more sophisticated Federated Learning scenarios.
+
+This project provides a practical demonstration of how Federated Learning and trust evaluation can be combined to build secure, scalable, and privacy-preserving Intrusion Detection Systems for modern IoT environments.
+
+================================================================================
