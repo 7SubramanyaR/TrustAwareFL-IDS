@@ -1,29 +1,49 @@
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+import numpy as np
+import tensorflow as tf
 
 
-class FLClient:
+class FederatedClient:
 
-    def __init__(self, client_id):
-
+    def __init__(self, client_id, trust_score=1.0):
         self.client_id = client_id
+        self.trust_score = trust_score
 
-        self.model = RandomForestClassifier(
-            n_estimators=100,
-            random_state=42
+    def train(self, model_path, X_train, y_train,
+            epochs=2, batch_size=64):
+
+        # Load latest global model
+        model = tf.keras.models.load_model(model_path)
+
+        print(f"\nClient {self.client_id} Training...")
+
+        history = model.fit(
+            X_train,
+            y_train,
+            epochs=epochs,
+            batch_size=batch_size,
+            verbose=0
         )
 
-    def train(self, X_train, X_test, y_train, y_test):
+        loss, accuracy = model.evaluate(
+            X_train,
+            y_train,
+            verbose=0
+        )
 
-        self.model.fit(X_train, y_train)
+        print(
+            f"Client {self.client_id} Accuracy: "
+            f"{accuracy:.4f}"
+        )
 
-        predictions = self.model.predict(X_test)
+        print(
+            f"Client {self.client_id} Loss: "
+            f"{loss:.4f}"
+        )
 
-        accuracy = accuracy_score(y_test, predictions)
+        return model.get_weights(), accuracy, loss
 
-        return {
-            "client_id": self.client_id,
-            "accuracy": accuracy,
-            "predictions": predictions,
-            "model": self.model
-        }
+    def get_trust_score(self):
+        return self.trust_score
+
+    def update_trust(self, new_score):
+        self.trust_score = new_score

@@ -1,102 +1,216 @@
+import os
+import shutil
 import numpy as np
+import tensorflow as tf
 
+from trust import TrustManager
 from preprocess import preprocess_data
-from client import FLClient
-from aggregator import Aggregator
-from logger import initialize_log, log_client
+from client import FederatedClient
+from aggregator import TrustAwareAggregator
+from logger import FLLogger
 
-NUM_CLIENTS = 4
-NUM_ROUNDS = 5
-MALICIOUS_CLIENT = 3
 
-initialize_log()
+# ==========================================================
+# Helper Function
+# ==========================================================
+def make_client_malicious(labels, corruption_rate=0.30):
+    """
+    Flip a percentage of labels to simulate a malicious client.
+    """
 
-X_train, X_test, y_train, y_test = preprocess_data()
+    corrupted = labels.copy()
 
-# Split dataset among clients
-indices = np.array_split(np.arange(len(X_train)), NUM_CLIENTS)
+    n = len(corrupted)
+    num_flip = int(n * corruption_rate)
 
-X_train_split = [
-    X_train.iloc[idx].reset_index(drop=True)
-    for idx in indices
-]
-
-y_train_split = [
-    y_train.iloc[idx].reset_index(drop=True)
-    for idx in indices
-]
-
-aggregator = Aggregator()
-
-for round_no in range(1, NUM_ROUNDS + 1):
-
-    print("\n")
-    print("=" * 60)
-    print(f"           FEDERATED LEARNING ROUND {round_no}")
-    print("=" * 60)
-
-    client_results = []
-
-    for i in range(NUM_CLIENTS):
-
-        client = FLClient(client_id=i + 1)
-
-        X_local = X_train_split[i].copy()
-        y_local = y_train_split[i].copy()
-
-        # ---------------------------------------
-        # Simulate Mirai Botnet Attack
-        # ---------------------------------------
-
-        if client.client_id == MALICIOUS_CLIENT:
-
-            print(f"\n🚨 Client {MALICIOUS_CLIENT} infected with Mirai Botnet")
-
-            poison_percent = min(
-                0.20 + (round_no * 0.10),
-                0.80
-            )
-
-            poison_count = int(
-                len(y_local) * poison_percent
-            )
-
-            poison_indices = np.random.choice(
-                y_local.index,
-                poison_count,
-                replace=False
-            )
-
-            y_local.loc[poison_indices] = (
-                1 - y_local.loc[poison_indices]
-            )
-
-            print(
-                f"Label Poisoning : {int(poison_percent*100)}%"
-            )
-
-        result = client.train(
-            X_local,
-            X_test,
-            y_local,
-            y_test
-        )
-
-        client_results.append(result)
-
-    global_accuracy = aggregator.aggregate(
-        client_results,
-        y_test
+    indices = np.random.choice(
+        n,
+        num_flip,
+        replace=False
     )
 
-    for client in client_results:
-        log_client(
-            round_no,
-            client
+    corrupted[indices] = 1 - corrupted[indices]
+
+    return corrupted
+
+
+# ==========================================================
+# Configuration
+# ==========================================================
+DATASET_PATH = "dataset/dataset.parquet"
+
+MODEL_PATH = "models/global/global_model.keras"
+BEST_MODEL_PATH = "models/global/best_global_model.keras"
+
+NUM_CLIENTS = 3
+ROUNDS = 5
+
+
+# ==========================================================
+# Load Dataset
+# ==========================================================
+X_train, X_test, y_train, y_test, scaler, encoders = preprocess_data(
+    DATASET_PATH
+)
+
+
+# ==========================================================
+# Split Dataset
+# ==========================================================
+X_clients = np.array_split(X_train, NUM_CLIENTS)
+y_clients = np.array_split(y_train, NUM_CLIENTS)
+
+print("\nInjecting malicious behaviour into Client 3...\n")
+
+y_clients[2] = make_client_malicious(
+    y_clients[2],
+    corruption_rate=0.30
+)
+
+
+# ==========================================================
+# Create Clients
+# ==========================================================
+clients = [
+    FederatedClient(1, 0.95),
+    FederatedClient(2, 0.80),
+    FederatedClient(3, 0.60),
+]
+
+
+# ==========================================================
+# Initialize Components
+# ==========================================================
+aggregator = TrustAwareAggregator()
+
+trust_manager = TrustManager()
+
+logger = FLLogger()
+
+best_accuracy = 0.0
+
+
+# ==========================================================
+# Federated Learning
+# ==========================================================
+for round_num in range(ROUNDS):
+
+    print("\n" + "=" * 60)
+    print(f"FEDERATED ROUND {round_num + 1}")
+    print("=" * 60)
+
+    client_weights = []
+    trust_scores = []
+
+    # ------------------------------------------------------
+    # Local Client Training
+    # ------------------------------------------------------
+    for i, client in enumerate(clients):
+
+        weights, accuracy, loss = client.train(
+            MODEL_PATH,
+            X_clients[i],
+            y_clients[i],
+            epochs=1
         )
 
-print("\n")
+        # --------------------------
+        # Update Trust
+        # --------------------------
+        new_trust = trust_manager.update_trust(
+            client.get_trust_score(),
+            accuracy
+        )
+
+        client.update_trust(new_trust)
+
+        client_weights.append(weights)
+        trust_scores.append(new_trust)
+
+        status = "Honest"
+
+        if client.client_id == 3:
+            status = "Malicious"
+
+        print("\n----------------------------")
+        print(f"Client {client.client_id} ({status})")
+        print("----------------------------")
+        print(f"Accuracy : {accuracy:.4f}")
+        print(f"Loss     : {loss:.4f}")
+        print(f"Trust    : {new_trust:.3f}")
+
+        # --------------------------
+        # Log Results
+        # --------------------------
+        logger.log(
+            round_num + 1,
+            client.client_id,
+            accuracy,
+            loss,
+            new_trust
+        )
+
+    # ------------------------------------------------------
+    # Aggregate Client Models
+    # ------------------------------------------------------
+    global_weights = aggregator.aggregate(
+        client_weights,
+        trust_scores
+    )
+
+    aggregator.update_global_model(
+        MODEL_PATH,
+        global_weights,
+        MODEL_PATH
+    )
+
+    # ------------------------------------------------------
+    # Evaluate Global Model
+    # ------------------------------------------------------
+    model = tf.keras.models.load_model(MODEL_PATH)
+
+    global_loss, global_accuracy = model.evaluate(
+        X_test,
+        y_test,
+        verbose=0
+    )
+
+    print("\n================================")
+    print("GLOBAL MODEL")
+    print("================================")
+    print(f"Accuracy : {global_accuracy:.4f}")
+    print(f"Loss     : {global_loss:.4f}")
+
+    # ------------------------------------------------------
+    # Save Best Model
+    # ------------------------------------------------------
+    if global_accuracy > best_accuracy:
+
+        best_accuracy = global_accuracy
+
+        shutil.copy(
+            MODEL_PATH,
+            BEST_MODEL_PATH
+        )
+
+        print("\nBest Global Model Updated!")
+
+    # ------------------------------------------------------
+    # Print Trust Scores
+    # ------------------------------------------------------
+    print("\nCurrent Trust Scores")
+
+    for client in clients:
+        print(
+            f"Client {client.client_id} : {client.get_trust_score():.3f}"
+        )
+
+
+print("\n" + "=" * 60)
+print("FEDERATED LEARNING COMPLETED")
 print("=" * 60)
-print(" FEDERATED LEARNING SIMULATION COMPLETED ")
-print("=" * 60)
-print("\nResults saved to results/results.csv")
+
+print(f"\nBest Global Accuracy : {best_accuracy:.4f}")
+
+print("\nBest model saved at:")
+print(BEST_MODEL_PATH)

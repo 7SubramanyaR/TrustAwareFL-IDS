@@ -1,37 +1,44 @@
 import csv
 import os
 
-RESULTS_FILE = "results/results.csv"
 
-os.makedirs("results", exist_ok=True)
+class FLLogger:
 
-def initialize_log():
+    def __init__(self):
 
-    with open(RESULTS_FILE, "w", newline="") as file:
+        os.makedirs("logs", exist_ok=True)
 
-        writer = csv.writer(file)
+        self.file = "logs/training_log.csv"
 
-        writer.writerow([
-            "Round",
-            "Client",
-            "Accuracy",
-            "Trust",
-            "Weight",
-            "Status"
-        ])
+        if not os.path.exists(self.file):
 
+            with open(self.file, "w", newline="") as f:
 
-def log_client(round_no, client):
+                writer = csv.writer(f)
 
-    with open(RESULTS_FILE, "a", newline="") as file:
+                writer.writerow([
+                    "Round",
+                    "Client",
+                    "Accuracy",
+                    "Loss",
+                    "Trust"
+                ])
 
-        writer = csv.writer(file)
+    def log(self,
+            round_num,
+            client_id,
+            accuracy,
+            loss,
+            trust):
 
-        writer.writerow([
-            round_no,
-            client["client_id"],
-            round(client["accuracy"],4),
-            round(client["trust"],2),
-            round(client["weight"],2),
-            "Trusted" if client["trust"]>=0.5 else "Suspicious"
-        ])
+        with open(self.file, "a", newline="") as f:
+
+            writer = csv.writer(f)
+
+            writer.writerow([
+                round_num,
+                client_id,
+                accuracy,
+                loss,
+                trust
+            ])

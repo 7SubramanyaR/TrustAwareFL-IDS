@@ -1,107 +1,59 @@
 import numpy as np
-from sklearn.metrics import accuracy_score
-
-from trust import calculate_trust, update_history
+import tensorflow as tf
 
 
-class Aggregator:
+class TrustAwareAggregator:
 
-    def aggregate(self, client_results, y_test):
+    def __init__(self):
+        pass
 
-        print("\n========== TRUST-AWARE AGGREGATION ==========\n")
+    def aggregate(self, client_weights, trust_scores):
+        """
+        Trust-weighted Federated Averaging (FedAvg)
 
-        eligible_clients = []
-        trust_sum = 0
+        client_weights : List of model weights from each client
+        trust_scores   : Corresponding trust score for each client
 
-        # Calculate trust for each client
-        for client in client_results:
+        Returns:
+            Aggregated global weights
+        """
 
-            trust = calculate_trust(
-                client["client_id"],
-                client["accuracy"]
-            )
+        trust_scores = np.array(trust_scores, dtype=np.float32)
+        trust_scores = trust_scores / np.sum(trust_scores)
 
-            update_history(
-                client["client_id"],
-                trust
-            )
+        aggregated_weights = []
 
-            client["trust"] = trust
+        # Iterate through every layer
+        for layer in range(len(client_weights[0])):
 
-            if trust >= 0.40:
-                eligible_clients.append(client)
-                trust_sum += trust
-            else:
-                client["weight"] = 0
+            layer_weights = np.zeros_like(client_weights[0][layer])
 
-        # Preventing division by zero
-        if trust_sum == 0:
-            print("No trusted clients available!")
-            return None
+            for client in range(len(client_weights)):
+                layer_weights += (
+                    trust_scores[client]
+                    * client_weights[client][layer]
+                )
 
-        print("============== CLIENT STATUS ==============\n")
+            aggregated_weights.append(layer_weights)
 
-        for client in client_results:
+        return aggregated_weights
 
-            if client["trust"] >= 0.40:
-                client["weight"] = client["trust"] / trust_sum
-            else:
-                client["weight"] = 0
+    def update_global_model(
+        self,
+        model_path,
+        aggregated_weights,
+        save_path
+    ):
+        """
+        Loads current global model,
+        replaces weights,
+        saves updated model.
+        """
 
-            print(f"Client {client['client_id']}")
-            print(f"Accuracy : {client['accuracy']:.4f}")
-            print(f"Trust    : {client['trust']:.3f}")
-            print(f"Weight   : {client['weight']:.2%}")
+        model = tf.keras.models.load_model(model_path)
 
-            if client["trust"] >= 0.85:
-                print("Risk     : Low 🟢")
-            elif client["trust"] >= 0.60:
-                print("Risk     : Medium 🟡")
-            else:
-                print("Risk     : High 🔴")
+        model.set_weights(aggregated_weights)
 
-            if client["weight"] == 0:
-                print("Status   : 🚫 Excluded from Aggregation")
-            else:
-                print("Status   : ✅ Participating")
+        model.save(save_path)
 
-            print("----------------------------------------")
-
-        # ------------------------------
-        # Trust-weighted ensemble voting
-        # ------------------------------
-
-        predictions = np.array([
-            client["predictions"]
-            for client in eligible_clients
-        ])
-
-        weights = np.array([
-            client["weight"]
-            for client in eligible_clients
-        ])
-
-        weighted_predictions = np.average(
-            predictions,
-            axis=0,
-            weights=weights
-        )
-
-        global_predictions = (
-            weighted_predictions >= 0.5
-        ).astype(int)
-
-        global_accuracy = accuracy_score(
-            y_test,
-            global_predictions
-        )
-
-        print("\n========== GLOBAL MODEL ==========\n")
-
-        print(f"Global Accuracy : {global_accuracy:.4f}")
-        print(f"Trusted Clients : {len(eligible_clients)}")
-        print(f"Excluded Clients: {len(client_results)-len(eligible_clients)}")
-
-        print("\n==================================\n")
-
-        return global_accuracy
+        print("\nGlobal Model Updated Successfully!")

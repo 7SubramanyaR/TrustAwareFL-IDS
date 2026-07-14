@@ -1,97 +1,27 @@
-import random
+class TrustManager:
 
-# -----------------------------
-# Dynamic Trust Database
-# -----------------------------
+    def __init__(self):
+        self.min_trust = 0.10
+        self.max_trust = 1.00
 
-client_history = {
+    def update_trust(self, current_trust, local_accuracy):
+        """
+        Update trust score based on client's local accuracy.
+        """
 
-    1: {
-        "participation": 1.0,
-        "reliability": 0.98,
-        "trust": 1.0
-    },
+        if local_accuracy >= 0.95:
+            current_trust += 0.03
 
-    2: {
-        "participation": 1.0,
-        "reliability": 0.96,
-        "trust": 1.0
-    },
+        elif local_accuracy >= 0.90:
+            current_trust += 0.01
 
-    3: {
-        "participation": 0.80,
-        "reliability": 0.50,
-        "trust": 0.70
-    },
+        elif local_accuracy >= 0.80:
+            pass
 
-    4: {
-        "participation": 1.0,
-        "reliability": 0.97,
-        "trust": 1.0
-    }
+        else:
+            current_trust -= 0.05
 
-}
+        current_trust = max(self.min_trust, current_trust)
+        current_trust = min(self.max_trust, current_trust)
 
-
-def consistency_score(accuracy):
-
-    variation = random.uniform(-0.02,0.02)
-
-    score = accuracy + variation
-
-    return max(0,min(score,1))
-
-
-def calculate_trust(client_id, accuracy):
-
-    history = client_history[client_id]
-
-    consistency = consistency_score(accuracy)
-
-    trust = (
-
-        0.50 * accuracy +
-
-        0.20 * consistency +
-
-        0.20 * history["participation"] +
-
-        0.10 * history["reliability"]
-
-    )
-
-    trust = max(0,min(trust,1))
-
-    history["trust"] = trust
-
-    return round(trust,3)
-
-
-def update_history(client_id, trust):
-
-    history = client_history[client_id]
-
-    if trust < 0.50:
-
-        history["participation"] *= 0.90
-
-        history["reliability"] *= 0.85
-
-    else:
-
-        history["participation"] = min(
-            1.0,
-            history["participation"] + 0.01
-        )
-
-        history["reliability"] = min(
-            1.0,
-            history["reliability"] + 0.01
-        )
-
-    history["trust"] = trust
-
-
-def get_history(client_id):
-
-    return client_history[client_id]
+        return round(current_trust, 3)
