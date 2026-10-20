@@ -1,60 +1,20 @@
-import { motion } from "framer-motion";
-
-export default function StatCard({
-    title,
-    value,
-    color = "cyan"
-}) {
-
-    const colors = {
-        cyan: "text-cyan-400",
-        green: "text-green-400",
-        red: "text-red-400",
-        yellow: "text-yellow-400",
-        blue: "text-blue-400",
-        purple: "text-purple-400"
-    };
-
-    return (
-
-        <motion.div
-
-            whileHover={{
-                scale: 1.04,
-                y: -5
-            }}
-
-            transition={{
-                duration: 0.2
-            }}
-
-            className="
-                rounded-2xl
-                bg-white/5
-                border
-                border-cyan-500/20
-                backdrop-blur-xl
-                p-6
-                shadow-lg
-                hover:shadow-cyan-500/20
-                transition-all
-                duration-300
-            "
-
-        >
-
-            <p className="text-gray-400 text-sm uppercase tracking-wider">
-                {title}
-            </p>
-
-            <h2
-                className={`text-4xl font-bold mt-4 ${colors[color]}`}
-            >
-                {value}
-            </h2>
-
-        </motion.div>
-
-    );
-
+export default function StatCard({ icon: Icon, title, value, detail }) {
+  return (
+    <article className="surface stat-card">
+      <div className="stat-card-top">
+        <span className="stat-icon">{Icon && <Icon size={17} strokeWidth={1.8} aria-hidden="true" />}</span>
+        <span className="stat-title">{title}</span>
+      </div>
+      <p className="stat-value">{value}</p>
+      <p className="stat-detail">{detail}</p>
+      <style>{`
+        .stat-card { min-width: 0; min-height: 151px; padding: 17px 18px 16px; }
+        .stat-card-top { display: flex; align-items: center; gap: 9px; }
+        .stat-icon { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 9px; background: var(--accent-soft); color: var(--accent); }
+        .stat-title { color: #9aaab3; font-size: .76rem; font-weight: 550; line-height: 1.35; }
+        .stat-value { overflow: hidden; margin: 18px 0 7px; color: #edf4f6; font-size: clamp(1.45rem,2.3vw,2rem); font-weight: 650; letter-spacing: -.05em; text-overflow: ellipsis; white-space: nowrap; }
+        .stat-detail { margin: 0; color: #778892; font-size: .7rem; line-height: 1.45; }
+      `}</style>
+    </article>
+  );
 }
